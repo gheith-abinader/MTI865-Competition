@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import os
+
 import torch
 import pandas as pd
 from skimage import io, transform
@@ -69,7 +70,7 @@ def make_dataset(root, mode):
         unlbl_images.sort()
 
         labeled_items = []
-        unlabeled_items = [[it_im, ""] for it_im in unlbl_images]
+        unlabeled_items = [[os.path.join(train_unlbl_img_path, it_im), ""] for it_im in unlbl_images]
 
         for it_im, it_gt in zip(lbl_images, labels):
             item = (
@@ -161,20 +162,37 @@ class MedicalImageDataset(Dataset):
             mask = mask.rotate(angle)
         return img, mask
 
+    def augment(self, img):
+        if random() > 0.5:
+            img = ImageOps.flip(img)
+        if random() > 0.5:
+            img = ImageOps.mirror(img)
+        if random() > 0.5:
+            angle = random() * 60 - 30
+            img = img.rotate(angle)
+        return img
+
     def __getitem__(self, index):
         img_path, mask_path = self.imgs[index]
+        mask = None
+        if mask_path != '':
+            mask = Image.open(mask_path).convert("L")
         img = Image.open(img_path)
-        mask = Image.open(mask_path).convert("L")
+        
 
         if self.equalize:
             img = ImageOps.equalize(img)
 
         if self.augmentation:
-            img, mask = self.augment(img, mask)
+            if mask_path != '':
+                img, mask = self.augment(img, mask)
+            else:
+                img = self.augment(img)
 
         if self.transform:
             img = self.transform(img)
-            mask = self.mask_transform(mask)
+            if mask_path != '':
+                mask = self.mask_transform(mask)
 
         return [img, mask, img_path]
 
