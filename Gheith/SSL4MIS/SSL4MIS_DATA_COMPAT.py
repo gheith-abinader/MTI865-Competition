@@ -66,31 +66,14 @@ def worker_init_fn(worker_id):
 trainloader = DataLoader(db_train, batch_sampler=batch_sampler,
                             num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
 
-import matplotlib.pyplot as plt
-
 # Initialize lists to accumulate images and labels
 accumulated_images = []
 accumulated_labels = []
 
+max_epoch = max_iterations // len(trainloader) + 1
+iterator = tqdm(range(max_epoch), ncols=70)
 # Loop through the batches
-for i_batch, sampled_batch in enumerate(trainloader):
-    volume_batch, label_batch = sampled_batch['image'], sampled_batch['label']
-
-    # Accumulate images and labels
-    for image, label in zip(volume_batch, label_batch):
-        accumulated_images.append(image)
-        accumulated_labels.append(label)
-
-# Display the accumulated images and labels
-for i, (image, label) in enumerate(zip(accumulated_images, accumulated_labels)):
-    plt.figure(figsize=(5, 5))
-    plt.imshow(image.squeeze())  # Assuming image is a single-channel image
-    plt.title(f'Label: {label}')
-    plt.show()
-
-    # Optional: Print the name or number of the image
-    print(f'Image {i+1} with Label: {label}')
-
-    # Break the loop if you only want to display a certain number of images
-    if i == 17:  # Display only the first 18 images
-        break
+for epoch_num in iterator:
+    for i_batch, sampled_batch in enumerate(trainloader):
+        volume_batch, label_batch = sampled_batch['image'], sampled_batch['label']
+    print(volume_batch[0:2])

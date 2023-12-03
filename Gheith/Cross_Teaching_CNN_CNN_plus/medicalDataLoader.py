@@ -10,6 +10,7 @@ from torch.utils.data.sampler import Sampler
 from torchvision import transforms, utils
 from PIL import Image, ImageOps
 from random import random, randint
+import itertools
 
 # Ignore warnings
 import warnings
@@ -60,6 +61,7 @@ def make_dataset(root, mode):
         train_lbl_img_path = os.path.join(root, "train", "Img")
         train_mask_path = os.path.join(root, "train", "GT")
         train_unlbl_img_path = os.path.join(root, "train", "Img-Unlabeled")
+        blank_mask_path = os.path.join(root, "blank.png")
 
         lbl_images = list_imgs(train_lbl_img_path)
         labels = list_imgs(train_mask_path)
@@ -70,7 +72,10 @@ def make_dataset(root, mode):
         unlbl_images.sort()
 
         labeled_items = []
-        unlabeled_items = [[os.path.join(train_unlbl_img_path, it_im), ""] for it_im in unlbl_images]
+        unlabeled_items = [
+            [os.path.join(train_unlbl_img_path, it_im), blank_mask_path]
+            for it_im in unlbl_images
+        ]
 
         for it_im, it_gt in zip(lbl_images, labels):
             item = (
@@ -144,10 +149,7 @@ class MedicalImageDataset(Dataset):
         self.mode = mode
 
     def __len__(self):
-        if self.mode != "train":
-            return len(self.imgs)
-        else:
-            return len(self.imgs[0]) + len(self.imgs[1])
+        return len(self.imgs)
 
     def augment(self, img, mask):
         if random() > 0.5:
@@ -162,39 +164,24 @@ class MedicalImageDataset(Dataset):
             mask = mask.rotate(angle)
         return img, mask
 
-    def augment(self, img):
-        if random() > 0.5:
-            img = ImageOps.flip(img)
-        if random() > 0.5:
-            img = ImageOps.mirror(img)
-        if random() > 0.5:
-            angle = random() * 60 - 30
-            img = img.rotate(angle)
-        return img
-
     def __getitem__(self, index):
         img_path, mask_path = self.imgs[index]
-        mask = None
-        if mask_path != '':
-            mask = Image.open(mask_path).convert("L")
+        mask = Image.open(mask_path).convert("L")
         img = Image.open(img_path)
-        
 
         if self.equalize:
             img = ImageOps.equalize(img)
 
         if self.augmentation:
-            if mask_path != '':
-                img, mask = self.augment(img, mask)
-            else:
-                img = self.augment(img)
+            img, mask = self.augment(img, mask)
 
         if self.transform:
             img = self.transform(img)
-            if mask_path != '':
-                mask = self.mask_transform(mask)
+            mask = self.mask_transform(mask)
 
-        return [img, mask, img_path]
+        sample = {"image": img, "label": mask}
+        sample["idx"] = index
+        return sample
 
 
 # https://github.com/HiLab-git/SSL4MIS/blob/master/code/dataloaders/dataset.py
