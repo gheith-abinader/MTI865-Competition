@@ -74,12 +74,12 @@ def conv_single_image_plot(title, image, figsize=(16, 8), color="gray"):
 
     plt.show()
 
-# conv_max_layer_plot(nrows=1, ncols=1, title="First Conv2D", image=conv_output_image)
+# conv_max_layer_plot(nrows=16, ncols=8, title="First Conv2D", image=conv_output_image)
 conv_single_image_plot(title="First Conv2D", image=conv_output_image)
 
 
-encoder = UNetEncoderK3()
-decoder = UNetDecoderK3()
+encoder = UNetEncoderK5()
+decoder = UNetDecoderK5()
 
 encoder.train()
 decoder.train()

@@ -1,25 +1,3 @@
-import torch.nn.init as init
-import torch.nn.functional as F
-import pdb
-import math
-
-import torch
-from torch import nn
-
-def initialize_weights(*models):
-    for model in models:
-        for module in model.modules():
-            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
-                nn.init.kaiming_normal(module.weight)
-                if module.bias is not None:
-                    module.bias.data.zero_()
-            elif isinstance(module, nn.BatchNorm2d):
-                module.weight.data.fill_(1)
-                module.bias.data.zero_()
-
-#Code is taken from but significantly modified
-#https://github.com/HiLab-git/SSL4MIS/blob/master/code/networks/unet.py
-
 class _ConvBlock(nn.Module):
     """two convolution layers with batch norm and leaky relu"""
 
@@ -45,7 +23,7 @@ class _DownBlock(nn.Module):
         super(_DownBlock, self).__init__()
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
-            _ConvBlock(in_channels, out_channels, dropout_p, kernel_size=kernel_size, padding=padding),
+            _ConvBlock(in_channels, out_channels, dropout_p, kernel_size, padding=padding),
         )
 
     def forward(self, x):
@@ -124,30 +102,6 @@ class UNetDecoderK3(nn.Module):
         self.up4 = _UpBlock(32, 16, 16, dropout_p=0.0)
 
         self.out_conv = nn.Conv2d(16, 4, kernel_size=3, padding=1)
-
-    def forward(self, feature):
-        x0 = feature[0]
-        x1 = feature[1]
-        x2 = feature[2]
-        x3 = feature[3]
-        x4 = feature[4]
-
-        x = self.up1(x4, x3)
-        x = self.up2(x, x2)
-        x = self.up3(x, x1)
-        x = self.up4(x, x0)
-        output = self.out_conv(x)
-        return output
-
-class UNetDecoderK5(nn.Module):
-    def __init__(self):
-        super(UNetDecoderK5, self).__init__()
-        self.up1 = _UpBlock(256, 128, 128, dropout_p=0.0, kernel_size=5, padding=2)
-        self.up2 = _UpBlock(128, 64, 64, dropout_p=0.0, kernel_size=5, padding=2)
-        self.up3 = _UpBlock(64, 32, 32, dropout_p=0.0, kernel_size=5, padding=2)
-        self.up4 = _UpBlock(32, 16, 16, dropout_p=0.0, kernel_size=5, padding=2)
-
-        self.out_conv = nn.Conv2d(16, 4, kernel_size=5, padding=2)
 
     def forward(self, feature):
         x0 = feature[0]
