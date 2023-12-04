@@ -1,6 +1,18 @@
 import torch
 from torch import nn
 
+def get_current_consistency_weight(epoch):
+    def sigmoid_rampup(current, rampup_length):
+        """Exponential rampup from https://arxiv.org/abs/1610.02242"""
+        if rampup_length == 0:
+            return 1.0
+        else:
+            current = np.clip(current, 0.0, rampup_length)
+            phase = 1.0 - current / rampup_length
+            return float(np.exp(-5.0 * phase * phase))
+    # Consistency ramp-up from https://arxiv.org/abs/1610.02242
+    return 0.1 * sigmoid_rampup(epoch, 200.0)
+
 class DiceLoss(nn.Module):
     def __init__(self, n_classes):
         super(DiceLoss, self).__init__()
