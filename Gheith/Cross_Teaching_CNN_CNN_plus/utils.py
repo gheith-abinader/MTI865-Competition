@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import numpy as np
 
 def get_current_consistency_weight(epoch):
     def sigmoid_rampup(current, rampup_length):
@@ -50,6 +51,24 @@ class DiceLoss(nn.Module):
             class_wise_dice.append(1.0 - dice.item())
             loss += dice * weight[i]
         return loss / self.n_classes
+
+def cross_entropy2d(logit, target, ignore_index=255, weight=None, size_average=True, batch_average=True):
+    n, c, h, w = logit.size()
+    # logit = logit.permute(0, 2, 3, 1)
+    target = target.squeeze(1)
+    if weight is None:
+        criterion = nn.CrossEntropyLoss(weight=weight, ignore_index=ignore_index, size_average=False)
+    else:
+        criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(np.array(weight)).float().cuda(), ignore_index=ignore_index, size_average=False)
+    loss = criterion(logit, target.long())
+
+    if size_average:
+        loss /= (h * w)
+
+    if batch_average:
+        loss /= n
+
+    return loss
 
 def getTargetSegmentation(batch):
     # input is 1-channel of values between 0 and 1
