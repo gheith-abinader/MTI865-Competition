@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import numpy as np
+from torch.autograd import Variable
 
 def get_current_consistency_weight(epoch):
     def sigmoid_rampup(current, rampup_length):
@@ -77,3 +78,27 @@ def getTargetSegmentation(batch):
 
     denom = 0.33333334  # for ACDC this value
     return (batch / denom).round().long().squeeze()
+
+def to_var(x):
+    if torch.cuda.is_available():
+        x = x.cuda()
+    return Variable(x)
+
+def graphLosses(trainingLoss, valLoss, modelName, dir):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    plt.plot(trainingLoss, label='Training')
+    plt.plot(valLoss, label='Validation')
+    plt.legend()
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Losses for ' + modelName)
+    # Anotate best validation loss value and epoch with arrow
+    minValLoss = min(valLoss)
+    minValLossIndex = valLoss.index(minValLoss)
+    plt.annotate('Best Validation Loss: ' + str(minValLoss) + ", Epoch:" + str(minValLossIndex), xy=(minValLossIndex, minValLoss), xytext=(minValLossIndex, minValLoss+0.1),
+                 arrowprops=dict(facecolor='black', shrink=0.05),
+                 )
+    plt.savefig(os.path.join(dir, modelName + '_Loss.png'))
+    plt.close()
