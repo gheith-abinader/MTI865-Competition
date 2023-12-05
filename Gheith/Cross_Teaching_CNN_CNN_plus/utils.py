@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import numpy as np
 from torch.autograd import Variable
+import os
 
 def get_current_consistency_weight(epoch):
     def sigmoid_rampup(current, rampup_length):
