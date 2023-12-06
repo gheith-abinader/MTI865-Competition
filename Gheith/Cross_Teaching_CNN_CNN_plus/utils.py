@@ -3,6 +3,19 @@ from torch import nn
 import numpy as np
 from torch.autograd import Variable
 import os
+from medpy import metric
+import random
+
+
+def calculate_metric_percase(pred, gt):
+    pred[pred > 0] = 1
+    gt[gt > 0] = 1
+    if pred.sum() > 0:
+        dice = metric.binary.dc(pred, gt)
+        hd95 = metric.binary.hd95(pred, gt)
+        return dice, hd95
+    else:
+        return 0, 0
 
 def get_current_consistency_weight(epoch):
     def sigmoid_rampup(current, rampup_length):
@@ -54,24 +67,6 @@ class DiceLoss(nn.Module):
             loss += dice * weight[i]
         return loss / self.n_classes
 
-def cross_entropy2d(logit, target, ignore_index=255, weight=None, size_average=True, batch_average=True):
-    n, c, h, w = logit.size()
-    # logit = logit.permute(0, 2, 3, 1)
-    target = target.squeeze(1)
-    if weight is None:
-        criterion = nn.CrossEntropyLoss(weight=weight, ignore_index=ignore_index, size_average=False)
-    else:
-        criterion = nn.CrossEntropyLoss(weight=torch.from_numpy(np.array(weight)).float().cuda(), ignore_index=ignore_index, size_average=False)
-    loss = criterion(logit, target.long())
-
-    if size_average:
-        loss /= (h * w)
-
-    if batch_average:
-        loss /= n
-
-    return loss
-
 def getTargetSegmentation(batch):
     # input is 1-channel of values between 0 and 1
     # values are as follows : 0, 0.33333334, 0.6666667 and 0.94117647
@@ -79,11 +74,6 @@ def getTargetSegmentation(batch):
 
     denom = 0.33333334  # for ACDC this value
     return (batch / denom).round().long().squeeze()
-
-def to_var(x):
-    if torch.cuda.is_available():
-        x = x.cuda()
-    return Variable(x)
 
 def graphLosses(trainingLoss, valLoss, modelName, dir):
     import matplotlib.pyplot as plt
@@ -102,4 +92,73 @@ def graphLosses(trainingLoss, valLoss, modelName, dir):
                  arrowprops=dict(facecolor='black', shrink=0.05),
                  )
     plt.savefig(os.path.join(dir, modelName + '_Loss.png'))
+    plt.close()
+
+def superimpose_image_and_mask(image_array, mask_array):
+    """
+    Superimposes a mask onto an image. Each class in the mask is represented by a different color.
+
+    Parameters:
+    image_array (numpy.ndarray): The image as a NumPy array.
+    mask_array (numpy.ndarray): The mask as a NumPy array with values 0, 1, 2, 3.
+
+    Returns:
+    numpy.ndarray: The superimposed image as a NumPy array.
+    """
+    # Define colors for each class (change these as needed)
+    colors = {
+        0: [0, 0, 0],        # Background (invisible)
+        1: [173,255,47],      # Class 1 (GREEN yellow)
+        2: [0, 255, 0],      # Class 2 (Green)
+        3: [0, 0, 255]       # Class 3 (Blue)
+    }
+
+    # Create an RGB version of the image if it's not already RGB
+    # if len(image_array.shape) == 2 or image_array.shape[2] == 1:
+    #     image_array = np.stack([image_array]*3, axis=-1)
+
+    # Create a color mask
+    color_mask = np.zeros_like(image_array)
+    for class_value, color in colors.items():
+        color_mask[mask_array == class_value] = color
+
+    # Overlay the color mask onto the image
+    superimposed_image = np.where(color_mask, color_mask, image_array)
+
+    return superimposed_image
+
+
+def save_sample_images(image_batch, gt_labels, pred_labels, filename):
+    """
+    Saves a sample of 3 random images from a batch, displaying the grayscale image, 
+    ground truth, and prediction for each.
+
+    Parameters:
+    image_batch (numpy.ndarray): Batch of images (numpy array).
+    gt_labels (numpy.ndarray): Ground truth labels for the batch.
+    pred_labels (numpy.ndarray): Prediction labels for the batch.
+    filename (str): Filename to save the figure.
+    """
+    # Select 3 random indices from the batch
+    positions = random.sample(range(len(image_batch)), 3)
+
+    fig, axes = plt.subplots(3, 3, figsize=(10, 10))
+
+    for i, pos in enumerate(positions):
+        # Display grayscale image
+        axes[0, i].imshow(image_batch[pos], cmap='gray')
+        axes[0, i].axis('off')
+
+        # Display ground truth superimposed image
+        gt_superimposed = superimpose_image_and_mask(image_batch[pos], gt_labels[pos])
+        axes[1, i].imshow(gt_superimposed)
+        axes[1, i].axis('off')
+
+        # Display prediction superimposed image
+        pred_superimposed = superimpose_image_and_mask(image_batch[pos], pred_labels[pos])
+        axes[2, i].imshow(pred_superimposed)
+        axes[2, i].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(filename)
     plt.close()
