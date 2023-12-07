@@ -128,7 +128,7 @@ def superimpose_image_and_mask(image_array, mask_array):
     return superimposed_image
 
 
-def save_sample_images(image_batch, gt_labels, pred_labels, filename):
+def save_sample_images(image_batch, gt_labels, pred_labels1, pred_labels2, filename):
     """
     Saves a sample of 3 random images from a batch, displaying the grayscale image, 
     ground truth, and prediction for each.
@@ -142,7 +142,7 @@ def save_sample_images(image_batch, gt_labels, pred_labels, filename):
     # Select 3 random indices from the batch
     positions = random.sample(range(len(image_batch)), 3)
 
-    fig, axes = plt.subplots(3, 3, figsize=(10, 10))
+    fig, axes = plt.subplots(4, 3, figsize=(10, 10))
 
     for i, pos in enumerate(positions):
         # Display grayscale image
@@ -155,8 +155,13 @@ def save_sample_images(image_batch, gt_labels, pred_labels, filename):
         axes[1, i].axis('off')
 
         # Display prediction superimposed image
-        pred_superimposed = superimpose_image_and_mask(image_batch[pos], pred_labels[pos])
-        axes[2, i].imshow(pred_superimposed)
+        pred1_superimposed = superimpose_image_and_mask(image_batch[pos], pred_labels1[pos])
+        axes[2, i].imshow(pred1_superimposed)
+        axes[2, i].axis('off')
+
+        # Display prediction superimposed image
+        pred2_superimposed = superimpose_image_and_mask(image_batch[pos], pred_labels2[pos])
+        axes[2, i].imshow(pred2_superimposed)
         axes[2, i].axis('off')
 
     plt.tight_layout()

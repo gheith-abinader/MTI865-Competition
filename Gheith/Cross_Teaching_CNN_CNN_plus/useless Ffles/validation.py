@@ -19,8 +19,8 @@ if script_path == "":
     )
 
 
-os.chdir('..\\')
-
+# os.chdir('..\\')
+os.chdir(script_path)
 print("Current Working Directory: ", os.getcwd())
 
 from torch.utils.data import DataLoader
@@ -216,9 +216,10 @@ def calculate_metric_percase(pred, gt):
     if pred.sum() > 0:
         dice = metric.binary.dc(pred, gt)
         hd95 = metric.binary.hd95(pred, gt)
-        return dice, hd95
+        hd95 = metric.binary.asd(pred, gt)
+        return dice, hd95, asd
     else:
-        return 0, 0
+        return 0, 0, 0
 
 
 # THIS FUNCTION IS TO CONVERT LABELS TO A FORMAT TO BE USED IN THIS CODE
