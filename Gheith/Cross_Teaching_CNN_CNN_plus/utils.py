@@ -5,14 +5,30 @@ from torch.autograd import Variable
 import os
 from medpy import metric
 import random
+from scipy.spatial.distance import directed_hausdorff
 
+#https://github.com/lalonderodney/SegCaps/blob/master/metrics.py
+def _dice(result, reference):
+    result = np.atleast_1d(result.astype(np.bool_))
+    reference = np.atleast_1d(reference.astype(np.bool_))
+
+    intersection = np.count_nonzero(result & reference)
+
+    size_i1 = np.count_nonzero(result)
+    size_i2 = np.count_nonzero(reference)
+
+    try:
+        dc = 2. * intersection / float(size_i1 + size_i2)
+    except ZeroDivisionError:
+        dc = 0.0
+
+    return dc
 
 def calculate_metric_percase(pred, gt):
-    pred[pred > 0] = 1
-    gt[gt > 0] = 1
     if pred.sum() > 0:
-        dice = metric.binary.dc(pred, gt)
-        hd95 = metric.binary.hd95(pred, gt)
+        dice = _dice(pred, gt)
+        # hd95 = directed_hausdorff(pred, gt)[0]
+        hd95 = 0.0
         return dice, hd95
     else:
         return 0, 0
